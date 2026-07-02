@@ -8,13 +8,6 @@
 #include "rlgl.h"
 
 
-#define V_UP    (Vector3) {  0,  1,  0 }
-#define V_DOWN  (Vector3) {  0, -1,  0 }
-#define V_RIGHT (Vector3) {  1,  0,  0 }
-#define V_LEFT  (Vector3) { -1,  0,  0 }
-#define V_FRONT (Vector3) {  0,  0,  1 }
-#define V_BACK  (Vector3) {  0,  0, -1 }
-
 #define LOOKM PI/4
 #define LOOKACCEL 20.0f
 #define ANIMATION_TIME 0.5f
@@ -506,7 +499,7 @@ void draw_cube(cube_rig_t cube, Vector3 added_rot) {
   }
 }
 
-bool cube_is_solved(cube_rig_t* cube) {
+bool cube_is_solved(cube_rig_t* cube) { // only works if the cube is oriented the right way (the default way)
   for (size_t x = 0; x < 3; ++x) {
     for (size_t y = 0; y < 3; ++y) {
       for (size_t z = 0; z < 3; ++z) {
@@ -533,7 +526,7 @@ int main(void) {
 
   Camera3D camera = {0};
   camera.position = (Vector3){ 0, 0, 8 };
-  camera.up = V_UP;
+  camera.up = (Vector3) { 0, 1, 0};
   camera.fovy = 45.0f;
   camera.projection = CAMERA_PERSPECTIVE;
 
@@ -586,6 +579,13 @@ int main(void) {
     if (IsKeyPressed(KEY_Y)) move = CUBEMOVE_Y;
     if (IsKeyPressed(KEY_Z)) move = CUBEMOVE_Z;
     move += (move && IsKeyDown(KEY_LEFT_SHIFT));
+
+    if (IsKeyDown(KEY_LEFT_ALT)) {
+      if (IsKeyPressed(KEY_RIGHT)) move = CUBEMOVE_Y;
+      if (IsKeyPressed(KEY_LEFT )) move = CUBEMOVE_Y_PRIME;
+      if (IsKeyPressed(KEY_UP   )) move = CUBEMOVE_X_PRIME;
+      if (IsKeyPressed(KEY_DOWN )) move = CUBEMOVE_X;
+    }
 
     if (animations) {
       if (animation.lastmove == CUBEMOVE_NONE) {
@@ -942,8 +942,6 @@ int main(void) {
       if (solved && !new_solved) timer.active = true;
     }
     solved = new_solved;
-
-    // UpdateCamera(&camera, CAMERA_ORBITAL);
 
     BeginDrawing();
     ClearBackground(solved ? LIME : (Color) { 72, 72, 72, 255 });
