@@ -506,6 +506,18 @@ void draw_cube(cube_rig_t cube, Vector3 added_rot) {
   }
 }
 
+bool cube_is_solved(cube_rig_t* cube) {
+  for (size_t x = 0; x < 3; ++x) {
+    for (size_t y = 0; y < 3; ++y) {
+      for (size_t z = 0; z < 3; ++z) {
+        if (memcmp(&SOLVED_CUBE[x][y][z].faces, cube[0][x][y][z].faces, sizeof((subcube_t*)0)->faces)) return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 void format_secs(float seconds, char* buf, size_t max) {
   int m = ((int)(seconds / 60.0f)) % 60;
   int s = ((int)seconds) % 60;
@@ -542,6 +554,10 @@ int main(void) {
     bool active;
   } timer = {0};
 
+  bool animations = true;
+  bool auto_timer = true;
+  bool solved = true;
+
   while (!WindowShouldClose()) {
     float dt = GetFrameTime();
 
@@ -571,10 +587,12 @@ int main(void) {
     if (IsKeyPressed(KEY_Z)) move = CUBEMOVE_Z;
     move += (move && IsKeyDown(KEY_LEFT_SHIFT));
 
-    if (animation.lastmove == CUBEMOVE_NONE) {
-      animation.lastmove = move;
-      animation.progress = 0;
-    } else move = CUBEMOVE_NONE; // cancel the input
+    if (animations) {
+      if (animation.lastmove == CUBEMOVE_NONE) {
+        animation.lastmove = move;
+        animation.progress = 0;
+      } else move = CUBEMOVE_NONE; // cancel the input
+    }
 
     if (IsKeyPressed(KEY_SPACE)) {
       if (IsKeyDown(KEY_LEFT_SHIFT)) {
@@ -586,6 +604,9 @@ int main(void) {
     }
 
     if (timer.active) timer.time += dt;
+
+    animations ^= IsKeyPressed(KEY_A);
+    auto_timer ^= IsKeyPressed(KEY_T);
 
     cube_rig_t old;
     memcpy(old, cube, sizeof(cube_rig_t));
@@ -915,10 +936,17 @@ int main(void) {
     }
     memcpy(old, cube, sizeof(cube_rig_t));
 
+    bool new_solved = cube_is_solved(&cube);
+    if (auto_timer) {
+      if (!solved && new_solved) timer.active = false;
+      if (solved && !new_solved) timer.active = true;
+    }
+    solved = new_solved;
+
     // UpdateCamera(&camera, CAMERA_ORBITAL);
 
     BeginDrawing();
-    ClearBackground((Color) { 72, 72, 72, 255 });
+    ClearBackground(solved ? LIME : (Color) { 72, 72, 72, 255 });
 
     BeginMode3D(camera);
 
@@ -1237,6 +1265,9 @@ int main(void) {
     format_secs(timer.time, buf, 1024);
     int fontSize = 30;
     DrawText(buf, GetScreenWidth()/2 - MeasureText(buf, fontSize)/2, GetScreenHeight() - fontSize - 10, fontSize, timer.active ? GREEN : RED);
+
+    if (animations) DrawText("A", 10, GetScreenHeight() - 36, 36, RAYWHITE);
+    if (auto_timer) DrawText("T", GetScreenWidth() - 36, GetScreenHeight() - 36, 36, RAYWHITE);
 
     DrawFPS(10, 10);
 
