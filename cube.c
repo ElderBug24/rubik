@@ -1,6 +1,10 @@
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
+#include <stdbool.h>
+#include <assert.h>
 #include <stdio.h>
 
 #include "raylib.h"
@@ -51,7 +55,8 @@ typedef enum {
   CUBEMOVE_E, CUBEMOVE_E_PRIME,
   CUBEMOVE_X, CUBEMOVE_X_PRIME,
   CUBEMOVE_Y, CUBEMOVE_Y_PRIME,
-  CUBEMOVE_Z, CUBEMOVE_Z_PRIME
+  CUBEMOVE_Z, CUBEMOVE_Z_PRIME,
+  CUBEMOVE_COUNT
 } cubemove_e;
 
 typedef struct {
@@ -512,6 +517,366 @@ float ParametricBlend(float t) {
   return sqr / (2.0f * (sqr - t) + 1.0f);
 }
 
+void move_cube(cube_rig_t* cube, cubemove_e move) {
+  cube_rig_t old;
+  memcpy(old, *cube, sizeof(cube_rig_t));
+
+  size_t x, y, z;
+  switch (move) {
+    case CUBEMOVE_COUNT:
+      assert(false && "unreachable");
+    case CUBEMOVE_NONE:
+      break;
+    case CUBEMOVE_R:
+      x = 2;
+      for (y = 0; y < 3; ++y) {
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(-PI/2));
+          float temp_y = subcube.pos.y;
+          subcube.pos.y = subcube.pos.z;
+          subcube.pos.z = -temp_y;
+          cube[0][x][z][2 - y] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_R_PRIME:
+      x = 2;
+      for (y = 0; y < 3; ++y) {
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(PI/2));
+          float temp_y = subcube.pos.y;
+          subcube.pos.y = -subcube.pos.z;
+          subcube.pos.z = temp_y;
+          cube[0][x][2 - z][y] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_L:
+      x = 0;
+      for (y = 0; y < 3; ++y) {
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(PI/2));
+          float temp_y = subcube.pos.y;
+          subcube.pos.y = -subcube.pos.z;
+          subcube.pos.z = temp_y;
+          cube[0][x][2 - z][y] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_L_PRIME:
+      x = 0;
+      for (y = 0; y < 3; ++y) {
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(-PI/2));
+          float temp_y = subcube.pos.y;
+          subcube.pos.y = subcube.pos.z;
+          subcube.pos.z = -temp_y;
+          cube[0][x][z][2 - y] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_U:
+      for (x = 0; x < 3; ++x) {
+        y = 2;
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(-PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = -subcube.pos.z;
+          subcube.pos.z = temp_x;
+          cube[0][2 - z][y][x] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_U_PRIME:
+      for (x = 0; x < 3; ++x) {
+        y = 2;
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = subcube.pos.z;
+          subcube.pos.z = -temp_x;
+          cube[0][z][y][2 - x] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_D:
+      for (x = 0; x < 3; ++x) {
+        y = 0;
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = subcube.pos.z;
+          subcube.pos.z = -temp_x;
+          cube[0][z][y][2 - x] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_D_PRIME:
+      for (x = 0; x < 3; ++x) {
+        y = 0;
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(-PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = -subcube.pos.z;
+          subcube.pos.z = temp_x;
+          cube[0][2 - z][y][x] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_F:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          z = 2;
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(-PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = subcube.pos.y;
+          subcube.pos.y = -temp_x;
+          cube[0][y][2 - x][z] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_F_PRIME:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          z = 2;
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = -subcube.pos.y;
+          subcube.pos.y = temp_x;
+          cube[0][2 - y][x][z] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_B:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          z = 0;
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = -subcube.pos.y;
+          subcube.pos.y = temp_x;
+          cube[0][2 - y][x][z] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_B_PRIME:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          z = 0;
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(-PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = subcube.pos.y;
+          subcube.pos.y = -temp_x;
+          cube[0][y][2 - x][z] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_S:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          z = 1;
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(-PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = subcube.pos.y;
+          subcube.pos.y = -temp_x;
+          cube[0][y][2 - x][z] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_S_PRIME:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          z = 1;
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = -subcube.pos.y;
+          subcube.pos.y = temp_x;
+          cube[0][2 - y][x][z] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_M:
+      x = 1;
+      for (y = 0; y < 3; ++y) {
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(PI/2));
+          float temp_y = subcube.pos.y;
+          subcube.pos.y = -subcube.pos.z;
+          subcube.pos.z = temp_y;
+          cube[0][x][2 - z][y] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_M_PRIME:
+      x = 1;
+      for (y = 0; y < 3; ++y) {
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(-PI/2));
+          float temp_y = subcube.pos.y;
+          subcube.pos.y = subcube.pos.z;
+          subcube.pos.z = -temp_y;
+          cube[0][x][z][2 - y] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_E:
+      for (x = 0; x < 3; ++x) {
+        y = 1;
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = subcube.pos.z;
+          subcube.pos.z = -temp_x;
+          cube[0][z][y][2 - x] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_E_PRIME:
+      for (x = 0; x < 3; ++x) {
+        y = 1;
+        for (z = 0; z < 3; ++z) {
+          subcube_t subcube = old[x][y][z];
+          subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(-PI/2));
+          float temp_x = subcube.pos.x;
+          subcube.pos.x = -subcube.pos.z;
+          subcube.pos.z = temp_x;
+          cube[0][2 - z][y][x] = subcube;
+        }
+      }
+      break;
+    case CUBEMOVE_X:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          for (z = 0; z < 3; ++z) {
+            subcube_t subcube = old[x][y][z];
+            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(-PI/2));
+            float temp_y = subcube.pos.y;
+            subcube.pos.y = subcube.pos.z;
+            subcube.pos.z = -temp_y;
+            cube[0][x][z][2 - y] = subcube;
+          }
+        }
+      }
+      break;
+    case CUBEMOVE_X_PRIME:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          for (z = 0; z < 3; ++z) {
+            subcube_t subcube = old[x][y][z];
+            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(PI/2));
+            float temp_y = subcube.pos.y;
+            subcube.pos.y = -subcube.pos.z;
+            subcube.pos.z = temp_y;
+            cube[0][x][2 - z][y] = subcube;
+          }
+        }
+      }
+      break;
+    case CUBEMOVE_Y:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          for (z = 0; z < 3; ++z) {
+            subcube_t subcube = old[x][y][z];
+            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(-PI/2));
+            float temp_x = subcube.pos.x;
+            subcube.pos.x = -subcube.pos.z;
+            subcube.pos.z = temp_x;
+            cube[0][2 - z][y][x] = subcube;
+          }
+        }
+      }
+      break;
+    case CUBEMOVE_Y_PRIME:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          for (z = 0; z < 3; ++z) {
+            subcube_t subcube = old[x][y][z];
+            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(PI/2));
+            float temp_x = subcube.pos.x;
+            subcube.pos.x = subcube.pos.z;
+            subcube.pos.z = -temp_x;
+            cube[0][z][y][2 - x] = subcube;
+          }
+        }
+      }
+      break;
+    case CUBEMOVE_Z:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          for (z = 0; z < 3; ++z) {
+            subcube_t subcube = old[x][y][z];
+            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(-PI/2));
+            float temp_x = subcube.pos.x;
+            subcube.pos.x = subcube.pos.y;
+            subcube.pos.y = -temp_x;
+            cube[0][y][2 - x][z] = subcube;
+          }
+        }
+      }
+      break;
+    case CUBEMOVE_Z_PRIME:
+      for (x = 0; x < 3; ++x) {
+        for (y = 0; y < 3; ++y) {
+          for (z = 0; z < 3; ++z) {
+            subcube_t subcube = old[x][y][z];
+            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(PI/2));
+            float temp_x = subcube.pos.x;
+            subcube.pos.x = -subcube.pos.y;
+            subcube.pos.y = temp_x;
+            cube[0][2 - y][x][z] = subcube;
+          }
+        }
+      }
+      break;
+  }
+}
+
+cubemove_e* gen_scramble(size_t count) {
+  cubemove_e* buf = malloc(count * sizeof(cubemove_e));
+
+  srand((unsigned)time(NULL));
+  size_t x;
+  size_t limit = (size_t) -1 - ((size_t) -1 % CUBEMOVE_COUNT);
+  for (size_t i = 0; i < count; ++i) {
+    do {
+      x = rand();
+      x = (x << 16) ^ rand();
+    } while (x > limit);
+    size_t move = x % CUBEMOVE_COUNT;
+
+    buf[i] = (cubemove_e) move;
+  }
+
+  return buf;
+}
+
+void scramble_cube(cube_rig_t* cube, size_t count) {
+  cubemove_e* scramble = gen_scramble(count);
+  for (size_t i = 0; i < count; ++i) {
+    cubemove_e move = scramble[i];
+
+    move_cube(cube, move);
+  }
+  free(scramble);
+}
+
 int main(void) {
   InitWindow(800, 600, "Rubik's cube");
   SetTargetFPS(60);
@@ -592,6 +957,8 @@ int main(void) {
       }
     }
 
+    if (IsKeyPressed(KEY_ENTER)) scramble_cube(&cube, 256);
+
     Vector2 look_target = Vector2Scale(look_dir, LOOKM * (1 + IsKeyDown(KEY_LEFT_CONTROL) * 2));
     Vector2 look_delta = Vector2Subtract(look_target, look);
     look = Vector2Add(look, Vector2Scale(look_delta, 1.0f - expf(-LOOKACCEL * dt)));
@@ -599,331 +966,9 @@ int main(void) {
     if (timer.active) timer.time += dt;
 
     cube_rig_t old;
-    memcpy(old, cube, sizeof(cube_rig_t));
 
-    size_t x, y, z;
-    switch (move) {
-      case CUBEMOVE_NONE:
-        break;
-      case CUBEMOVE_R:
-        x = 2;
-        for (y = 0; y < 3; ++y) {
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(-PI/2));
-            float temp_y = subcube.pos.y;
-            subcube.pos.y = subcube.pos.z;
-            subcube.pos.z = -temp_y;
-            cube[x][z][2 - y] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_R_PRIME:
-        x = 2;
-        for (y = 0; y < 3; ++y) {
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(PI/2));
-            float temp_y = subcube.pos.y;
-            subcube.pos.y = -subcube.pos.z;
-            subcube.pos.z = temp_y;
-            cube[x][2 - z][y] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_L:
-        x = 0;
-        for (y = 0; y < 3; ++y) {
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(PI/2));
-            float temp_y = subcube.pos.y;
-            subcube.pos.y = -subcube.pos.z;
-            subcube.pos.z = temp_y;
-            cube[x][2 - z][y] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_L_PRIME:
-        x = 0;
-        for (y = 0; y < 3; ++y) {
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(-PI/2));
-            float temp_y = subcube.pos.y;
-            subcube.pos.y = subcube.pos.z;
-            subcube.pos.z = -temp_y;
-            cube[x][z][2 - y] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_U:
-        for (x = 0; x < 3; ++x) {
-          y = 2;
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(-PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = -subcube.pos.z;
-            subcube.pos.z = temp_x;
-            cube[2 - z][y][x] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_U_PRIME:
-        for (x = 0; x < 3; ++x) {
-          y = 2;
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = subcube.pos.z;
-            subcube.pos.z = -temp_x;
-            cube[z][y][2 - x] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_D:
-        for (x = 0; x < 3; ++x) {
-          y = 0;
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = subcube.pos.z;
-            subcube.pos.z = -temp_x;
-            cube[z][y][2 - x] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_D_PRIME:
-        for (x = 0; x < 3; ++x) {
-          y = 0;
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(-PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = -subcube.pos.z;
-            subcube.pos.z = temp_x;
-            cube[2 - z][y][x] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_F:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            z = 2;
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(-PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = subcube.pos.y;
-            subcube.pos.y = -temp_x;
-            cube[y][2 - x][z] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_F_PRIME:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            z = 2;
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = -subcube.pos.y;
-            subcube.pos.y = temp_x;
-            cube[2 - y][x][z] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_B:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            z = 0;
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = -subcube.pos.y;
-            subcube.pos.y = temp_x;
-            cube[2 - y][x][z] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_B_PRIME:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            z = 0;
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(-PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = subcube.pos.y;
-            subcube.pos.y = -temp_x;
-            cube[y][2 - x][z] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_S:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            z = 1;
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(-PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = subcube.pos.y;
-            subcube.pos.y = -temp_x;
-            cube[y][2 - x][z] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_S_PRIME:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            z = 1;
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = -subcube.pos.y;
-            subcube.pos.y = temp_x;
-            cube[2 - y][x][z] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_M:
-        x = 1;
-        for (y = 0; y < 3; ++y) {
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(PI/2));
-            float temp_y = subcube.pos.y;
-            subcube.pos.y = -subcube.pos.z;
-            subcube.pos.z = temp_y;
-            cube[x][2 - z][y] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_M_PRIME:
-        x = 1;
-        for (y = 0; y < 3; ++y) {
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(-PI/2));
-            float temp_y = subcube.pos.y;
-            subcube.pos.y = subcube.pos.z;
-            subcube.pos.z = -temp_y;
-            cube[x][z][2 - y] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_E:
-        for (x = 0; x < 3; ++x) {
-          y = 1;
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = subcube.pos.z;
-            subcube.pos.z = -temp_x;
-            cube[z][y][2 - x] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_E_PRIME:
-        for (x = 0; x < 3; ++x) {
-          y = 1;
-          for (z = 0; z < 3; ++z) {
-            subcube_t subcube = old[x][y][z];
-            subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(-PI/2));
-            float temp_x = subcube.pos.x;
-            subcube.pos.x = -subcube.pos.z;
-            subcube.pos.z = temp_x;
-            cube[2 - z][y][x] = subcube;
-          }
-        }
-        break;
-      case CUBEMOVE_X:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            for (z = 0; z < 3; ++z) {
-              subcube_t subcube = old[x][y][z];
-              subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(-PI/2));
-              float temp_y = subcube.pos.y;
-              subcube.pos.y = subcube.pos.z;
-              subcube.pos.z = -temp_y;
-              cube[x][z][2 - y] = subcube;
-            }
-          }
-        }
-        break;
-      case CUBEMOVE_X_PRIME:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            for (z = 0; z < 3; ++z) {
-              subcube_t subcube = old[x][y][z];
-              subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateX(PI/2));
-              float temp_y = subcube.pos.y;
-              subcube.pos.y = -subcube.pos.z;
-              subcube.pos.z = temp_y;
-              cube[x][2 - z][y] = subcube;
-            }
-          }
-        }
-        break;
-      case CUBEMOVE_Y:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            for (z = 0; z < 3; ++z) {
-              subcube_t subcube = old[x][y][z];
-              subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(-PI/2));
-              float temp_x = subcube.pos.x;
-              subcube.pos.x = -subcube.pos.z;
-              subcube.pos.z = temp_x;
-              cube[2 - z][y][x] = subcube;
-            }
-          }
-        }
-        break;
-      case CUBEMOVE_Y_PRIME:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            for (z = 0; z < 3; ++z) {
-              subcube_t subcube = old[x][y][z];
-              subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateY(PI/2));
-              float temp_x = subcube.pos.x;
-              subcube.pos.x = subcube.pos.z;
-              subcube.pos.z = -temp_x;
-              cube[z][y][2 - x] = subcube;
-            }
-          }
-        }
-        break;
-      case CUBEMOVE_Z:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            for (z = 0; z < 3; ++z) {
-              subcube_t subcube = old[x][y][z];
-              subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(-PI/2));
-              float temp_x = subcube.pos.x;
-              subcube.pos.x = subcube.pos.y;
-              subcube.pos.y = -temp_x;
-              cube[y][2 - x][z] = subcube;
-            }
-          }
-        }
-        break;
-      case CUBEMOVE_Z_PRIME:
-        for (x = 0; x < 3; ++x) {
-          for (y = 0; y < 3; ++y) {
-            for (z = 0; z < 3; ++z) {
-              subcube_t subcube = old[x][y][z];
-              subcube.rot = MatrixMultiply(subcube.rot, MatrixRotateZ(PI/2));
-              float temp_x = subcube.pos.x;
-              subcube.pos.x = -subcube.pos.y;
-              subcube.pos.y = temp_x;
-              cube[2 - y][x][z] = subcube;
-            }
-          }
-        }
-        break;
-    }
+    move_cube(&cube, move);
+
     memcpy(old, cube, sizeof(cube_rig_t));
 
     BeginDrawing();
@@ -940,7 +985,11 @@ int main(void) {
         t = ParametricBlend(t);
         t -= 1;
 
+        size_t x, y, z;
         switch (animation.lastmove) {
+          case CUBEMOVE_COUNT:
+          case CUBEMOVE_NONE:
+            assert(false && "unreachable");
           case CUBEMOVE_R:
             x = 2;
             for (y = 0; y < 3; ++y) {
