@@ -10,7 +10,7 @@
 
 #define LOOKM PI/4
 #define LOOKACCEL 20.0f
-#define ANIMATION_TIME 0.5f
+#define ANIMATION_TIME 0.3f
 
 const static Vector3 CUBEVERTICES[8] = {
   (Vector3) {  0.5,  0.5,  0.5 },
@@ -507,6 +507,11 @@ void format_secs(float seconds, char* buf, size_t max) {
   snprintf(buf, max, "%02d:%02d.%03d", m, s, ms);
 }
 
+float ParametricBlend(float t) {
+  float sqr = t * t;
+  return sqr / (2.0f * (sqr - t) + 1.0f);
+}
+
 int main(void) {
   InitWindow(800, 600, "Rubik's cube");
   Image logo = LoadImage("./rubik.png");
@@ -547,10 +552,6 @@ int main(void) {
     if (IsKeyDown(KEY_DOWN)) look_dir.y += 1;
     look_dir = Vector2Normalize(look_dir);
 
-    Vector2 look_target = Vector2Scale(look_dir, LOOKM * (1 + IsKeyDown(KEY_LEFT_CONTROL) * 2));
-    Vector2 look_delta = Vector2Subtract(look_target, look);
-    look = Vector2Add(look, Vector2Scale(look_delta, 1.0f - expf(-LOOKACCEL * dt)));
-
     cubemove_e move = CUBEMOVE_NONE;
     if (IsKeyPressed(KEY_R)) move = CUBEMOVE_R;
     if (IsKeyPressed(KEY_L)) move = CUBEMOVE_L;
@@ -566,7 +567,10 @@ int main(void) {
     if (IsKeyPressed(KEY_Z)) move = CUBEMOVE_Z;
     move += (move && IsKeyDown(KEY_LEFT_SHIFT));
 
+    animations ^= IsKeyPressed(KEY_A);
+
     if (IsKeyDown(KEY_LEFT_ALT)) {
+      look_dir = (Vector2) {0};
       if (IsKeyPressed(KEY_RIGHT)) move = CUBEMOVE_Y;
       if (IsKeyPressed(KEY_LEFT )) move = CUBEMOVE_Y_PRIME;
       if (IsKeyPressed(KEY_UP   )) move = CUBEMOVE_X_PRIME;
@@ -589,9 +593,10 @@ int main(void) {
       }
     }
 
-    if (timer.active) timer.time += dt;
+    Vector2 look_target = Vector2Scale(look_dir, LOOKM * (1 + IsKeyDown(KEY_LEFT_CONTROL) * 2));
+    Vector2 look_delta = Vector2Subtract(look_target, look);
+    look = Vector2Add(look, Vector2Scale(look_delta, 1.0f - expf(-LOOKACCEL * dt)));
 
-    animations ^= IsKeyPressed(KEY_A);
     if (timer.active) timer.time += dt;
 
     cube_rig_t old;
@@ -932,7 +937,9 @@ int main(void) {
         animation.lastmove = CUBEMOVE_NONE;
         draw_cube(cube, (Vector3) { .x = -look.y, .y = -look.x });
       } else {
-        float t = animation.progress / ANIMATION_TIME - 1;
+        float t = animation.progress / ANIMATION_TIME;
+        t = ParametricBlend(t);
+        t -= 1;
 
         switch (animation.lastmove) {
           case CUBEMOVE_R:
