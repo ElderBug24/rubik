@@ -12,7 +12,7 @@
 #define LOOKACCEL 20.0f
 #define ANIMATION_TIME 0.3f
 
-const static Vector3 CUBEVERTICES[8] = {
+static const Vector3 CUBEVERTICES[8] = {
   (Vector3) {  0.5,  0.5,  0.5 },
   (Vector3) {  0.5,  0.5, -0.5 },
   (Vector3) { -0.5,  0.5, -0.5 },
@@ -23,7 +23,7 @@ const static Vector3 CUBEVERTICES[8] = {
   (Vector3) { -0.5, -0.5,  0.5 }
 };
 
-const static uint8_t CUBEFACES[12][3] = {
+static const uint8_t CUBEFACES[12][3] = {
   { 0, 3, 4 }, // RED
   { 4, 3, 7 },
   { 0, 1, 2 }, // WHITE
@@ -63,13 +63,13 @@ typedef struct {
 typedef subcube_t cube_rig_t[3][3][3];
 
 static const Matrix MATRIX_IDENTITY = {
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
+  1, 0, 0, 0,
+  0, 1, 0, 0,
+  0, 0, 1, 0,
+  0, 0, 0, 1
 };
 
-const static cube_rig_t SOLVED_CUBE = {
+static const cube_rig_t SOLVED_CUBE = {
   {
     {
       (subcube_t) {
@@ -514,6 +514,7 @@ float ParametricBlend(float t) {
 
 int main(void) {
   InitWindow(800, 600, "Rubik's cube");
+  SetTargetFPS(60);
   Image logo = LoadImage("./rubik.png");
   SetWindowIcon(logo);
 
@@ -522,8 +523,6 @@ int main(void) {
   camera.up = (Vector3) { 0, 1, 0};
   camera.fovy = 45.0f;
   camera.projection = CAMERA_PERSPECTIVE;
-
-  SetTargetFPS(60);
 
   Vector2 look = {0};
 
